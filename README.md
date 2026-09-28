@@ -9,7 +9,7 @@
 **Anonymous Topluluğu için geliştirilmiş, gizlilik odaklı mesajlaşma uygulaması.**
 
 [![Release](https://img.shields.io/github/v/release/ThT0AltayHR/anonmessage?style=for-the-badge&color=000000&labelColor=111111&logo=android&logoColor=white)](https://github.com/ThT0AltayHR/anonmessage/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/ThT0AltayHR/anonmessage/total?style=for-the-badge&color=000000&labelColor=111111&logo=github)](../../releases)
+[![Downloads](https://img.shields.io/github/downloads/ThT0AltayHR/anonmessage/total?style=for-the-badge&color=000000&labelColor=111111&logo=github)](https://github.com/ThT0AltayHR/anonmessage/releases)
 [![Stars](https://img.shields.io/github/stars/ThT0AltayHR/anonmessage?style=for-the-badge&color=000000&labelColor=111111&logo=github)](../../stargazers)
 [![Forks](https://img.shields.io/github/forks/ThT0AltayHR/anonmessage?style=for-the-badge&color=000000&labelColor=111111)](../../network/members)
 [![License](https://img.shields.io/badge/lisans-tescilli-000000?style=for-the-badge&labelColor=111111)](LICENSE)
@@ -52,9 +52,9 @@
 2. Telefonda *Bilinmeyen kaynaklardan yüklemeye izin ver* seçeneğini aç.
 3. APK'yı aç ve kur.
 
-## Kaynak Kod
+## Kapalı Kaynak
 
-Android kaynak kodu bu depoda tutulur. Derlenen `Anonymous.apk` dosyası resmi Releases sayfasında yayınlanır. Ayrıntılar için [LICENSE](LICENSE) dosyasına bak.
+Bu proje **kapalı kaynaklıdır**. Android uygulamasının kaynak kodu bu depoda yayınlanmaz. Yalnızca `Anonymous.apk` dosyası resmi [Releases](https://github.com/ThT0AltayHR/anonmessage/releases/latest) sayfasından indirmeye sunulur. Ayrıntılar için [LICENSE](LICENSE) dosyasına bak.
 
 ## Güvenlik
 
