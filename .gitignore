@@ -1,0 +1,8 @@
+*.keystore
+*.jks
+local.properties
+build/
+.gradle/
+.idea/
+*.apk
+server/config.php
