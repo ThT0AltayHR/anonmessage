@@ -1,0 +1,105 @@
+name: Build Anonymous stable APK
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release page and workflow
+        uses: actions/checkout@v4
+
+      - name: Download the current Android source from Drive
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DIR="$RUNNER_TEMP/anonymous-source"
+          mkdir -p "$SOURCE_DIR"
+          curl --fail --location --retry 3 \
+            "https://drive.usercontent.google.com/download?id=1WgIubhBRTd3754AxD8YMQNtVGW_P0LSu&export=download&confirm=t" \
+            --output "$RUNNER_TEMP/anonymous-source.zip"
+          unzip -q "$RUNNER_TEMP/anonymous-source.zip" -d "$SOURCE_DIR"
+          test -f "$SOURCE_DIR/android/app/build.gradle.kts"
+          echo "ANONYMOUS_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Configure release signing when a keystore is available
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_BASE64" && -z "$KEYSTORE_PASSWORD" && -z "$KEY_ALIAS" && -z "$KEY_PASSWORD" ]]; then
+            echo "No persistent signing secrets are configured; using the Gradle release signing fallback."
+          elif [[ -n "$KEYSTORE_BASE64" && -n "$KEYSTORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+            KEYSTORE_PATH="$RUNNER_TEMP/anonymous-release.keystore"
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+            echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+            echo "Persistent release signing is configured."
+          else
+            echo "::error::All four release signing secrets must be configured together."
+            exit 1
+          fi
+
+      - name: Build signed release APK
+        shell: bash
+        working-directory: ${{ runner.temp }}/anonymous-source/android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle --no-daemon clean assembleRelease
+
+      - name: Name and verify Anonymous.apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find "$ANONYMOUS_SOURCE_DIR/android/app/build/outputs/apk/release" -type f -name '*.apk' -print -quit)"
+          test -n "$APK" && test -f "$APK"
+          cp "$APK" "$GITHUB_WORKSPACE/Anonymous.apk"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/Anonymous.apk"
+          echo "APK_PATH=$GITHUB_WORKSPACE/Anonymous.apk" >> "$GITHUB_ENV"
+
+      - name: Upload APK build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Anonymous.apk
+          path: Anonymous.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish latest stable release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: anonymous-stable-${{ github.run_id }}
+          name: Anonymous 1.1 — Kararlı (build ${{ github.run_number }})
+          body: |
+            Anonymous uygulamasının Drive'daki güncel Android kaynak kodundan derlenen kararlı sürümü.
+
+            Kurulum dosyası: `Anonymous.apk`
+          files: Anonymous.apk
+          make_latest: true
+          prerelease: false
