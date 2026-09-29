@@ -177,6 +177,6 @@
     <string name="auth_username">Username</string>
     <string name="auth_password">Password</string>
     <string name="auth_password2">Repeat password</string>
-    <string name="auth_mismatch">Passwords don't match</string>
+    <string name="auth_mismatch">Passwords don\'t match</string>
     <string name="auth_rules">Username: 3-32 chars (a-z, 0-9, _) · Password: at least 8 chars</string>
 </resources>
