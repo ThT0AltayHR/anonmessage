@@ -28,7 +28,8 @@ jobs:
           test -f "$SOURCE_DIR/android/app/build.gradle.kts"
           python3 - \
             "$SOURCE_DIR/android/app/src/main/res/values-en/strings.xml" \
-            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/ui/ManageScreens.kt" <<'PY'
+            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/ui/ManageScreens.kt" \
+            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/MainActivity.kt" <<'PY'
           from pathlib import Path
           import sys
 
@@ -48,6 +49,15 @@ jobs:
               raise SystemExit("Expected LazyColumn items import was not found; refusing to patch.")
           if grid_items not in screen_source:
               screen.write_text(screen_source.replace(lazy_items, lazy_items + grid_items, 1))
+
+          activity = Path(sys.argv[3])
+          activity_source = activity.read_text()
+          runtime_import = "import androidx.compose.runtime.*\n"
+          saveable_import = "import androidx.compose.runtime.saveable.rememberSaveable\n"
+          if runtime_import not in activity_source:
+              raise SystemExit("Expected Compose runtime import was not found; refusing to patch.")
+          if saveable_import not in activity_source:
+              activity.write_text(activity_source.replace(runtime_import, runtime_import + saveable_import, 1))
           PY
           echo "ANONYMOUS_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
