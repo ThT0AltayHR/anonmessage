@@ -29,8 +29,10 @@ jobs:
           python3 - \
             "$SOURCE_DIR/android/app/src/main/res/values-en/strings.xml" \
             "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/ui/ManageScreens.kt" \
-            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/MainActivity.kt" <<'PY'
+            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/MainActivity.kt" \
+            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/AppViewModel.kt" <<'PY'
           from pathlib import Path
+          import re
           import sys
 
           strings = Path(sys.argv[1])
@@ -58,6 +60,15 @@ jobs:
               raise SystemExit("Expected Compose runtime import was not found; refusing to patch.")
           if saveable_import not in activity_source:
               activity.write_text(activity_source.replace(runtime_import, runtime_import + saveable_import, 1))
+
+          view_model = Path(sys.argv[4])
+          view_model_source = view_model.read_text()
+          if "private fun setOutbox(" not in view_model_source:
+              raise SystemExit("Expected private outbox method was not found; refusing to patch.")
+          view_model_source, replacements = re.subn(r"\bsetOutbox\(", "replaceOutbox(", view_model_source)
+          if replacements < 2:
+              raise SystemExit("Expected outbox method and call sites were not found; refusing to patch.")
+          view_model.write_text(view_model_source)
           PY
           echo "ANONYMOUS_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
