@@ -43,13 +43,22 @@ fun IntroVideo(onFinished: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
                 TextureView(c).apply {
+                    var surface: Surface? = null
+                    var started = false
                     surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                         override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                            // Yuzey yeniden olustu (uygulama arka plandan dondu): sadece yuzeyi tekrar bagla
+                            if (started) {
+                                try { surface = Surface(st); player.setSurface(surface) } catch (e: Exception) { finish() }
+                                return
+                            }
+                            started = true
                             try {
                                 val afd = ctx.resources.openRawResourceFd(R.raw.intro)
                                 player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                                 afd.close()
-                                player.setSurface(Surface(st))
+                                surface = Surface(st)
+                                player.setSurface(surface)
                                 player.isLooping = false
                                 player.setOnVideoSizeChangedListener { _, vw, vh -> applyCenterCrop(this@apply, vw, vh) }
                                 player.setOnCompletionListener { finish() }
@@ -61,7 +70,13 @@ fun IntroVideo(onFinished: () -> Unit) {
                         override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {
                             try { applyCenterCrop(this@apply, player.videoWidth, player.videoHeight) } catch (_: Exception) {}
                         }
-                        override fun onSurfaceTextureDestroyed(st: SurfaceTexture) = true
+                        override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                            // Sistem yuzeyi yok etmeden once oynaticidan ayir ve Surface'i serbest birak
+                            try { player.setSurface(null) } catch (_: Exception) {}
+                            try { surface?.release() } catch (_: Exception) {}
+                            surface = null
+                            return true
+                        }
                         override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
                     }
                 }

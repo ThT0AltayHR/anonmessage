@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Anonymous</string>
-    <string name="login_sub">Sign in with your Google account to continue</string>
     <string name="login_google">Sign in with Google</string>
     <string name="chats">Chats</string>
     <string name="clubs">Clubs</string>
@@ -149,4 +148,35 @@
     <string name="reports">Reports</string>
     <string name="close_report">Close</string>
     <string name="send_message_normal">Send normally</string>
+    <string name="login_failed">Google sign-in failed</string>
+    <string name="login_no_account">No Google account was found, or the app signature (SHA-1) is not registered with Google. Make sure a Google account is added on this phone.</string>
+    <string name="session_expired">Session expired, please sign in again</string>
+    <string name="retry">Try again</string>
+    <string name="unmute">Unmute</string>
+    <string name="leave_confirm">Leave this chat?</string>
+    <string name="user_blocked">User blocked</string>
+    <string name="saved">Saved</string>
+    <string name="ban_hours_hint">Hours (0 = permanent)</string>
+    <string name="pin_locked">Too many wrong attempts. Wait %d s</string>
+    <string name="no_app_for_file">No app can open this file</string>
+    <string name="error_server">Invalid server response (HTTP %1$d): %2$s</string>
+    <string name="notif_service_stopped">Background listening stopped. Open the app to restart it.</string>
+    <string name="login_help_title">Google sign-in didn\'t work</string>
+    <string name="login_help_body">This usually happens for one of two reasons:\n\n1) No Google account is added on this phone, or Google Play services is missing.\n2) The app\'s signing fingerprint (SHA-1) is not added to the Android OAuth client (package com.anonymous.app) in Google Cloud Console.\n\nCopy the SHA-1 below, add it there and try again in a few minutes.</string>
+    <string name="login_help_detail">Technical detail</string>
+    <string name="login_help_copy">Copy SHA-1</string>
+    <string name="login_feat_pin">App locked with your PIN</string>
+    <string name="login_feat_retention">Messages are kept for 10 days at most</string>
+    <string name="login_feat_once">View-once photos</string>
+    <string name="chat_empty">No messages yet. Write the first one.</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="login_sub">Log in or sign up to continue</string>
+    <string name="auth_login">Log in</string>
+    <string name="auth_register">Sign up</string>
+    <string name="auth_username">Username</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_password2">Repeat password</string>
+    <string name="auth_mismatch">Passwords don't match</string>
+    <string name="auth_rules">Username: 3-32 chars (a-z, 0-9, _) · Password: at least 8 chars</string>
 </resources>

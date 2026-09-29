@@ -97,7 +97,7 @@ fun ProfileScreen(vm: AppViewModel, userId: Int, onMessage: (Int) -> Unit, onLis
     }
 
     if (reporting) ReportDialog({ reporting = false }) { reason ->
-        vm.reportUser(u.id, reason) { vm.info = "OK" }; reporting = false
+        vm.reportUser(u.id, reason) { vm.infoRes = R.string.report_sent }; reporting = false
     }
     if (granting) PermDialog(vm, u) { granting = false; vm.openProfile(u.id) }
 }
@@ -150,7 +150,8 @@ fun UserListScreen(vm: AppViewModel, onOpen: (Int) -> Unit) {
             Tab(tab == 1, { tab = 1 }, text = { Text(stringResource(R.string.followers), fontSize = 13.sp) })
             Tab(tab == 2, { tab = 2 }, text = { Text(stringResource(R.string.blocked_users), fontSize = 13.sp) })
         }
-        if (vm.userList.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_users), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (vm.userListLoading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        else if (vm.userList.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_users), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         LazyColumn {
             items(vm.userList, key = { it.id }) { u ->
                 Row(Modifier.fillMaxWidth().clickable { onOpen(u.id) }.padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {

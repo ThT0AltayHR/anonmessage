@@ -31,8 +31,8 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::KEYSTORE_BASE64 tanimli degil; release APK debug keystore ile imzalanacak."
-            exit 0
+            echo "::error::KEYSTORE_BASE64 secret'i tanimli degil. README'deki 'Imzalama' bolumune bakin."
+            exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
@@ -70,3 +70,19 @@ jobs:
             Kararli surum. `Anonymous.apk` dosyasini indirip kurun.
           files: Anonymous.apk
           make_latest: true
+
+      # Kapali kaynak: derleme bitince kaynak kodu repodan silinir (sadece README, lisans ve workflow kalir).
+      # NOT: Bu adim SON adimdir. Silme basarili olursa bir sonraki derleme icin kaynak KALMAZ;
+      # bu yuzden kaynak, 'source' adli ozel (private) yedek dala once kopyalanir.
+      - name: Kaynagi yedekle ve depodan temizle
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          git config user.name  "anonymous-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git fetch origin
+          # 1) tam kaynagi 'source-backup' dalina it (bu dal PRIVATE depoda tutulmali)
+          git push origin HEAD:refs/heads/source-backup --force
+          # 2) main'den kaynak dosyalarini sil, sadece vitrin dosyalari kalsin
+          git rm -r -q --ignore-unmatch android server
+          git commit -q -m "chore: kaynak kodu kaldirildi (kapali kaynak)" || exit 0
+          git push origin HEAD:main

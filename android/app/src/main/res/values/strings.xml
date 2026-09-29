@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Anonymous</string>
-    <string name="login_sub">Devam etmek için Google hesabınla giriş yap</string>
     <string name="login_google">Google ile giriş yap</string>
     <string name="chats">Sohbetler</string>
     <string name="clubs">Kulüpler</string>
@@ -144,9 +143,40 @@
     <string name="continue_btn">Devam</string>
     <string name="send_once_hint">Tek seferlik gönder</string>
     <string name="chat_restricted">Bu kulüpte yazma kısıtlı</string>
-    <string name="mention_hint">@ ile birini etiketle</string>
+    <string name="mention_hint">\@ ile birini etiketle</string>
     <string name="judge_name">Yargıç</string>
     <string name="reports">Şikayetler</string>
     <string name="close_report">Kapat</string>
     <string name="send_message_normal">Normal gönder</string>
+    <string name="login_failed">Google girişi başarısız oldu</string>
+    <string name="login_no_account">Google hesabı bulunamadı ya da uygulamanın imzası (SHA-1) Google\'da kayıtlı değil. Telefonda bir Google hesabı ekli olduğundan emin ol.</string>
+    <string name="session_expired">Oturum süresi doldu, tekrar giriş yap</string>
+    <string name="retry">Tekrar dene</string>
+    <string name="unmute">Sesi aç</string>
+    <string name="leave_confirm">Ayrılmak istiyor musun?</string>
+    <string name="user_blocked">Kullanıcı engellendi</string>
+    <string name="saved">Kaydedildi</string>
+    <string name="ban_hours_hint">Saat (0 = süresiz)</string>
+    <string name="pin_locked">Çok fazla yanlış deneme. %d sn bekle</string>
+    <string name="no_app_for_file">Bu dosyayı açabilecek bir uygulama yok</string>
+    <string name="error_server">Sunucudan geçersiz yanıt (HTTP %1$d): %2$s</string>
+    <string name="notif_service_stopped">Arka plan dinleme durdu. Yeniden başlatmak için uygulamayı aç.</string>
+    <string name="login_help_title">Google girişi çalışmadı</string>
+    <string name="login_help_body">Bu genelde şu iki sebepten olur:\n\n1) Telefonda Google hesabı ekli değil ya da Google Play Hizmetleri yok.\n2) Uygulamanın imza parmak izi (SHA-1), Google Cloud Console\'da paket adı com.anonymous.app olan Android OAuth istemcisine eklenmemiş.\n\nAşağıdaki SHA-1\'i kopyalayıp oraya ekle, birkaç dakika sonra tekrar dene.</string>
+    <string name="login_help_detail">Teknik ayrıntı</string>
+    <string name="login_help_copy">SHA-1\'i kopyala</string>
+    <string name="login_feat_pin">PIN ile kilitli uygulama</string>
+    <string name="login_feat_retention">Mesajlar en fazla 10 gün saklanır</string>
+    <string name="login_feat_once">Tek seferlik görüntülenen görseller</string>
+    <string name="chat_empty">Henüz mesaj yok. İlk mesajı sen yaz.</string>
+    <string name="today">Bugün</string>
+    <string name="yesterday">Dün</string>
+    <string name="login_sub">Devam etmek için giriş yap veya kayıt ol</string>
+    <string name="auth_login">Giriş yap</string>
+    <string name="auth_register">Kayıt ol</string>
+    <string name="auth_username">Kullanıcı adı</string>
+    <string name="auth_password">Şifre</string>
+    <string name="auth_password2">Şifre (tekrar)</string>
+    <string name="auth_mismatch">Şifreler aynı değil</string>
+    <string name="auth_rules">Kullanıcı adı: 3-32 karakter (a-z, 0-9, _) · Şifre: en az 8 karakter</string>
 </resources>

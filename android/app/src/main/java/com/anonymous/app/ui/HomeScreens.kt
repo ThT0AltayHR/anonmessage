@@ -1,9 +1,15 @@
 package com.anonymous.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,31 +19,120 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anonymous.app.AppViewModel
+import com.anonymous.app.BuildConfig
 import com.anonymous.app.R
 import com.anonymous.app.data.*
 import com.anonymous.app.util.shortWhen
 
+/** Giris / kayit ekrani: kullanici adi + sifre. Iki dugme: "Giris yap" ve "Kayit ol" (hesabi olmayan Kayit ol'a basar). */
 @Composable
-fun LoginScreen(onGoogle: () -> Unit, busy: Boolean) {
+fun LoginScreen(onSubmit: (register: Boolean, username: String, password: String) -> Unit, busy: Boolean) {
+    val cs = MaterialTheme.colorScheme
+    var register by remember { mutableStateOf(false) }
+    var user by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    var pass2 by remember { mutableStateOf("") }
+    var mismatch by remember { mutableStateOf(false) }
+    val kbPass = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password)
+    val hide = androidx.compose.ui.text.input.PasswordVisualTransformation()
+    val shape = RoundedCornerShape(16.dp)
+    val submit = {
+        if (register && pass != pass2) mismatch = true
+        else { mismatch = false; onSubmit(register, user.trim().lowercase(), pass) }
+    }
+    Box(Modifier.fillMaxSize().background(cs.background)) {
+        Column(
+            Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                Modifier.size(180.dp).drawBehind {
+                    val r = size.minDimension / 2f
+                    drawCircle(brush = Brush.radialGradient(colors = listOf(cs.primary.copy(alpha = 0.30f), Color.Transparent), center = center, radius = r), radius = r)
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(painterResource(R.drawable.app_logo), contentDescription = null, modifier = Modifier.size(100.dp).clip(RoundedCornerShape(24.dp)))
+            }
+            Text(stringResource(R.string.app_name), fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.login_sub), color = cs.onSurfaceVariant, fontSize = 15.sp, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(22.dp))
+            OutlinedTextField(
+                user, { user = it.take(32) }, Modifier.fillMaxWidth(), singleLine = true, shape = shape,
+                label = { Text(stringResource(R.string.auth_username)) },
+                leadingIcon = { Icon(Icons.Default.Person, null) },
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                pass, { pass = it.take(72) }, Modifier.fillMaxWidth(), singleLine = true, shape = shape,
+                label = { Text(stringResource(R.string.auth_password)) }, visualTransformation = hide, keyboardOptions = kbPass,
+                leadingIcon = { Icon(Icons.Default.Lock, null) },
+            )
+            if (register) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    pass2, { pass2 = it.take(72) }, Modifier.fillMaxWidth(), singleLine = true, shape = shape,
+                    label = { Text(stringResource(R.string.auth_password2)) }, visualTransformation = hide, keyboardOptions = kbPass,
+                    isError = mismatch, supportingText = { if (mismatch) Text(stringResource(R.string.auth_mismatch)) },
+                    leadingIcon = { Icon(Icons.Default.Lock, null) },
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.auth_rules), color = cs.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+            Spacer(Modifier.height(20.dp))
+            Button({ submit() }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy && user.isNotBlank() && pass.isNotEmpty(), shape = shape) {
+                if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                else Text(stringResource(if (register) R.string.auth_register else R.string.auth_login), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton({ register = !register; mismatch = false }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, shape = shape) {
+                Text(stringResource(if (register) R.string.auth_login else R.string.auth_register), fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(18.dp))
+            Text("v" + BuildConfig.VERSION_NAME, fontSize = 11.sp, color = cs.onSurfaceVariant.copy(alpha = 0.6f))
+        }
+    }
+}
+
+@Composable
+private fun LoginFeature(icon: ImageVector, text: String) {
+    val cs = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(cs.primary.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = cs.primary)
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(text, color = cs.onSurface, fontSize = 14.sp)
+    }
+}
+
+/** Acilista profil yuklenemediginde (internet yok / sunucu hatasi) sonsuz donen ekran yerine gosterilir. */
+@Composable
+fun RetryScreen(onRetry: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(32.dp),
+        Modifier.fillMaxSize().systemBarsPadding().padding(32.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.app_logo), null, Modifier.size(132.dp))
+        StickerImage("sleep", 96.dp)
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.error_network), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.app_name), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.login_sub), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onGoogle, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text(stringResource(R.string.login_google), fontSize = 16.sp)
-        }
+        Button(onRetry, shape = RoundedCornerShape(14.dp)) { Text(stringResource(R.string.retry)) }
     }
 }
 
@@ -49,7 +144,7 @@ fun ProfileSetup(vm: AppViewModel) {
     var busy by remember { mutableStateOf(false) }
     val pick = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { u -> if (u != null) vm.uploadAvatar(u) }
     Column(
-        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(28.dp),
+        Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(28.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(stringResource(R.string.profile_setup), fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -67,21 +162,24 @@ fun ProfileSetup(vm: AppViewModel) {
             onClick = { busy = true; vm.updateProfile(mapOf("username" to name, "bio" to bio)) { busy = false } },
             enabled = name.length >= 3 && !busy, modifier = Modifier.fillMaxWidth().height(50.dp),
         ) { Text(stringResource(R.string.continue_btn)) }
+        Spacer(Modifier.height(8.dp))
+        TextButton({ vm.logout() }) { Text(stringResource(R.string.logout), color = MaterialTheme.colorScheme.error) }
     }
 }
 
 /** PIN degistirme: once eski PIN, sonra yeni PIN iki kez. */
 @Composable
-fun ChangePinFlow(store: PinStore, onDone: () -> Unit) {
+fun ChangePinFlow(store: PinStore, userId: Int, onDone: () -> Unit) {
     var verified by remember { mutableStateOf(false) }
-    if (!verified) PinScreen("unlock", store, onUnlocked = { verified = true }, onForgot = onDone)
-    else PinScreen("create", store, onUnlocked = onDone, onForgot = onDone)
+    if (!verified) PinScreen("unlock", userId, store, onUnlocked = { verified = true }, onForgot = onDone, allowForgot = false)
+    else PinScreen("create", userId, store, onUnlocked = onDone, onForgot = onDone, allowForgot = false)
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(vm: AppViewModel, onOpen: (Int) -> Unit) {
     var menuFor by remember { mutableStateOf<ChatItem?>(null) }
+    var leaveFor by remember { mutableStateOf<ChatItem?>(null) }
     if (vm.chats.isEmpty() && !vm.loadingChats) {
         Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -136,10 +234,19 @@ fun ChatListScreen(vm: AppViewModel, onOpen: (Int) -> Unit) {
             text = {
                 Column {
                     TextButton({ vm.togglePin(c); menuFor = null }) { Text(stringResource(if (c.pinned) R.string.unpin else R.string.pin)) }
-                    TextButton({ vm.toggleMute(c); menuFor = null }) { Text(stringResource(R.string.mute)) }
-                    TextButton({ vm.leaveChat(c.id) { }; menuFor = null }) { Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error) }
+                    TextButton({ vm.toggleMute(c); menuFor = null }) { Text(stringResource(if (c.muted) R.string.unmute else R.string.mute)) }
+                    TextButton({ leaveFor = c; menuFor = null }) { Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error) }
                 }
             },
+        )
+    }
+    leaveFor?.let { c ->
+        AlertDialog(
+            onDismissRequest = { leaveFor = null },
+            title = { Text(stringResource(R.string.leave_confirm)) },
+            text = { Text(c.name, maxLines = 1) },
+            confirmButton = { TextButton({ vm.leaveChat(c.id) { }; leaveFor = null }) { Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton({ leaveFor = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -152,7 +259,7 @@ fun DiscoverScreen(vm: AppViewModel, onOpen: (Int) -> Unit) {
     LaunchedEffect(q) {
         kotlinx.coroutines.delay(300)
         groups = vm.discover(q)
-        people = if (q.length >= 2) vm.searchUsers(q) else emptyList()
+        people = if (q.length >= 2) vm.searchUsers(q).filter { it.id != vm.me?.id } else emptyList()
     }
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -200,7 +307,7 @@ fun NewGroupScreen(vm: AppViewModel, onDone: (Int) -> Unit, onBack: () -> Unit) 
     var title by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var public by remember { mutableStateOf(true) }
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
         OutlinedTextField(title, { title = it.take(64) }, label = { Text(stringResource(R.string.group_title)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(

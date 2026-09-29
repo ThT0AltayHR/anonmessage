@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Anonymous</string>
-    <string name="login_sub">Войдите через аккаунт Google, чтобы продолжить</string>
     <string name="login_google">Войти через Google</string>
     <string name="chats">Чаты</string>
     <string name="clubs">Клубы</string>
@@ -149,4 +148,35 @@
     <string name="reports">Жалобы</string>
     <string name="close_report">Закрыть</string>
     <string name="send_message_normal">Отправить как обычно</string>
+    <string name="login_failed">Не удалось войти через Google</string>
+    <string name="login_no_account">Аккаунт Google не найден, либо подпись приложения (SHA-1) не зарегистрирована в Google. Убедитесь, что на телефоне добавлен аккаунт Google.</string>
+    <string name="session_expired">Сессия истекла, войдите снова</string>
+    <string name="retry">Повторить</string>
+    <string name="unmute">Включить звук</string>
+    <string name="leave_confirm">Покинуть этот чат?</string>
+    <string name="user_blocked">Пользователь заблокирован</string>
+    <string name="saved">Сохранено</string>
+    <string name="ban_hours_hint">Часы (0 = навсегда)</string>
+    <string name="pin_locked">Слишком много неверных попыток. Подождите %d с</string>
+    <string name="no_app_for_file">Нет приложения для открытия этого файла</string>
+    <string name="error_server">Недопустимый ответ сервера (HTTP %1$d): %2$s</string>
+    <string name="notif_service_stopped">Фоновое прослушивание остановлено. Откройте приложение, чтобы запустить его снова.</string>
+    <string name="login_help_title">Вход через Google не сработал</string>
+    <string name="login_help_body">Обычно причина одна из двух:\n\n1) На телефоне не добавлен аккаунт Google или нет сервисов Google Play.\n2) Отпечаток подписи приложения (SHA-1) не добавлен в Android-клиент OAuth (имя пакета com.anonymous.app) в Google Cloud Console.\n\nСкопируйте SHA-1 ниже, добавьте его туда и повторите попытку через несколько минут.</string>
+    <string name="login_help_detail">Технические детали</string>
+    <string name="login_help_copy">Скопировать SHA-1</string>
+    <string name="login_feat_pin">Приложение защищено PIN-кодом</string>
+    <string name="login_feat_retention">Сообщения хранятся не более 10 дней</string>
+    <string name="login_feat_once">Фото для однократного просмотра</string>
+    <string name="chat_empty">Сообщений пока нет. Напишите первым.</string>
+    <string name="today">Сегодня</string>
+    <string name="yesterday">Вчера</string>
+    <string name="login_sub">Войдите или зарегистрируйтесь</string>
+    <string name="auth_login">Войти</string>
+    <string name="auth_register">Регистрация</string>
+    <string name="auth_username">Имя пользователя</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_password2">Повторите пароль</string>
+    <string name="auth_mismatch">Пароли не совпадают</string>
+    <string name="auth_rules">Имя: 3-32 символа (a-z, 0-9, _) · Пароль: не менее 8 символов</string>
 </resources>

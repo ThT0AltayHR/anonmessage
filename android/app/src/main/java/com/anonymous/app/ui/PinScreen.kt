@@ -22,25 +22,56 @@ import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-/** PIN cihazda PBKDF2 ile hash'lenir; duz metin hicbir yerde tutulmaz ve sunucuya gonderilmez. */
+/**
+ * PIN cihazda PBKDF2 ile hash'lenir; duz metin hicbir yerde tutulmaz ve sunucuya gonderilmez.
+ * PIN bir hesaba baglidir (owner): baska Google hesabiyla girilirse eski PIN o hesaba uygulanmaz.
+ */
 class PinStore(ctx: Context) {
     private val p = ctx.getSharedPreferences("anon_pin", Context.MODE_PRIVATE)
 
     val isSet: Boolean get() = p.contains("hash")
+
+    var owner: Int
+        get() = p.getInt("owner", 0)
+        private set(v) { p.edit().putInt("owner", v).apply() }
+
+    /** Bu PIN [userId] hesabina mi ait? (Eski surumden kalan sahipsiz PIN ilk acan hesaba devredilir.) */
+    fun isSetFor(userId: Int): Boolean = isSet && (owner == 0 || owner == userId)
+
+    fun adopt(userId: Int) { if (isSet && owner == 0 && userId > 0) owner = userId }
+
     var failCount: Int
         get() = p.getInt("fails", 0)
         private set(v) { p.edit().putInt("fails", v).apply() }
 
-    fun set(pin: String) {
+    /** Yanlis denemeler yuzunden kilit acilmasina kalan sure (ms); 0 = kilit yok. */
+    val lockRemainingMs: Long
+        get() = (p.getLong("lock_until", 0L) - System.currentTimeMillis()).coerceAtLeast(0L)
+
+    fun set(pin: String, userId: Int) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
-        p.edit().putString("salt", salt.toHex()).putString("hash", hash(pin, salt).toHex()).putInt("fails", 0).apply()
+        p.edit()
+            .putString("salt", salt.toHex()).putString("hash", hash(pin, salt).toHex())
+            .putInt("fails", 0).putLong("lock_until", 0L).putInt("owner", userId)
+            .apply()
     }
 
     fun verify(pin: String): Boolean {
+        if (lockRemainingMs > 0L) return false
         val salt = p.getString("salt", null)?.fromHex() ?: return false
         val want = p.getString("hash", null) ?: return false
         val ok = MessageDigest.isEqual(hash(pin, salt).toHex().toByteArray(), want.toByteArray())
-        failCount = if (ok) 0 else failCount + 1
+        if (ok) {
+            p.edit().putInt("fails", 0).putLong("lock_until", 0L).apply()
+        } else {
+            val n = failCount + 1
+            failCount = n
+            // Her 5 yanlis denemede bekleme suresi uzar: 30 sn, 60 sn, ... en fazla 5 dk
+            if (n % MAX_FAILS_BEFORE_WARNING == 0) {
+                val secs = minOf(30L * (n / MAX_FAILS_BEFORE_WARNING), 300L)
+                p.edit().putLong("lock_until", System.currentTimeMillis() + secs * 1000L).apply()
+            }
+        }
         return ok
     }
 
@@ -54,32 +85,44 @@ class PinStore(ctx: Context) {
 }
 
 const val PIN_LEN = 6
+/** Bu kadar ust uste yanlis denemeden sonra giris gecici olarak kilitlenir. */
 const val MAX_FAILS_BEFORE_WARNING = 5
 
-/** mode: "create" -> iki kez girilir | "unlock" -> dogrulanir */
+/**
+ * mode: "create" -> iki kez girilir | "unlock" -> dogrulanir.
+ * [allowForgot]: "PIN'imi unuttum" (hesabi sil) baglantisi; PIN degistirirken gosterilmez.
+ */
 @Composable
 fun PinScreen(
-    mode: String, store: PinStore, onUnlocked: () -> Unit, onForgot: () -> Unit,
+    mode: String, userId: Int, store: PinStore, onUnlocked: () -> Unit, onForgot: () -> Unit,
+    allowForgot: Boolean = true,
 ) {
     var entry by remember { mutableStateOf("") }
     var first by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showForgot by remember { mutableStateOf(false) }
+    var lockLeft by remember { mutableLongStateOf(if (mode == "unlock") store.lockRemainingMs else 0L) }
     val mismatch = stringResource(R.string.pin_mismatch)
     val wrong = stringResource(R.string.pin_wrong)
+
+    // Kilit suresi dolana kadar geri sayim
+    LaunchedEffect(lockLeft > 0L) {
+        while (lockLeft > 0L) { kotlinx.coroutines.delay(500); lockLeft = store.lockRemainingMs }
+    }
 
     fun submit() {
         if (mode == "create") {
             if (first == null) { first = entry; entry = ""; error = null }
-            else if (first == entry) { store.set(entry); onUnlocked() }
+            else if (first == entry) { store.set(entry, userId); onUnlocked() }
             else { first = null; entry = ""; error = mismatch }
         } else {
-            if (store.verify(entry)) onUnlocked() else { entry = ""; error = wrong }
+            if (store.verify(entry)) onUnlocked()
+            else { entry = ""; error = wrong; lockLeft = store.lockRemainingMs }
         }
     }
 
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().systemBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         StickerImage("ninja", 84.dp)
@@ -98,7 +141,10 @@ fun PinScreen(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Text(error ?: " ", color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+        Text(
+            if (lockLeft > 0L) stringResource(R.string.pin_locked, ((lockLeft + 999L) / 1000L).toInt()) else (error ?: " "),
+            color = MaterialTheme.colorScheme.error, fontSize = 13.sp,
+        )
         Spacer(Modifier.height(12.dp))
 
         val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "<")
@@ -108,7 +154,7 @@ fun PinScreen(
                     Box(
                         Modifier.size(72.dp).clip(CircleShape)
                             .background(if (k.isEmpty()) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable(enabled = k.isNotEmpty()) {
+                            .clickable(enabled = k.isNotEmpty() && lockLeft <= 0L) {
                                 error = null
                                 if (k == "<") { if (entry.isNotEmpty()) entry = entry.dropLast(1) }
                                 else if (entry.length < PIN_LEN) {
@@ -125,7 +171,7 @@ fun PinScreen(
             }
         }
 
-        if (mode == "unlock") {
+        if (mode == "unlock" && allowForgot) {
             Spacer(Modifier.height(8.dp))
             TextButton({ showForgot = true }) { Text(stringResource(R.string.pin_forgot), color = MaterialTheme.colorScheme.error) }
         }

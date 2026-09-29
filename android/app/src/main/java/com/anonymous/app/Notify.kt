@@ -50,13 +50,31 @@ class NotifyService : Service() {
         if (job?.isActive != true) job = scope.launch {
             val api = Api(applicationContext)
             while (isActive) {
+                // Cikis yapildi ya da oturum gecersiz (401) oldu: dinlemeyi birak
+                if (api.token == null) { stopSelf(); break }
                 try {
-                    if (api.token != null) pollOnce(api)
+                    pollOnce(api)
                 } catch (e: CancellationException) { throw e } catch (_: Exception) { /* ag hatasi: bir sonraki turda tekrar */ }
                 delay(6000)
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * Android 15+: "dataSync" on plan servisleri 24 saatte en fazla 6 saat calisabilir. Sure dolunca sistem
+     * bu fonksiyonu cagirir; birkac saniye icinde durmazsak uygulama coker. Durdurup kullaniciyi bilgilendiririz.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        try {
+            val n = NotificationCompat.Builder(this, CH_MSG)
+                .setSmallIcon(R.drawable.ic_stat_notify).setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notif_service_stopped)).setAutoCancel(true)
+                .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+                .build()
+            NotificationManagerCompat.from(this).notify(999, n)
+        } catch (_: SecurityException) {}
+        stopSelf()
     }
 
     private suspend fun pollOnce(api: Api) {
@@ -71,12 +89,13 @@ class NotifyService : Service() {
             val body = o.str("body") ?: ""
             val group = o.bool("group")
             val mention = o.bool("mention")
-            val title = when {
-                mention && group -> "${o.str("chat_title")}"
-                group -> o.str("chat_title") ?: sender
-                else -> sender
+            val title = if (group) (o.str("chat_title") ?: sender) else sender
+            val mentionText = o.str("mention_text").orEmpty()
+            val text = when {
+                mention && mentionText.isNotBlank() -> "$mentionText: $body"
+                group -> "$sender: $body"
+                else -> body
             }
-            val text = if (mention) "${o.str("mention_text")}: $body" else if (group) "$sender: $body" else body
             notify(chatId, title, text)
         }
     }
@@ -115,10 +134,17 @@ class ReplyReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Api(ctx.applicationContext).call("chat.php", "send", mapOf("chat_id" to chatId, "text" to text))
-            } catch (_: Exception) {
-            } finally {
-                // Bildirimi "gonderildi" diye kapat
+                // Basarili: bildirimi kapat
                 NotificationManagerCompat.from(ctx).cancel(1000 + chatId)
+            } catch (_: Exception) {
+                // Basarisiz: bildirim yanit yukleniyor gostergesinde takili kalmasin, hatayi goster
+                try {
+                    val n = NotificationCompat.Builder(ctx, CH_MSG)
+                        .setSmallIcon(R.drawable.ic_stat_notify).setContentTitle(ctx.getString(R.string.app_name))
+                        .setContentText(ctx.getString(R.string.error_network)).setAutoCancel(true).build()
+                    NotificationManagerCompat.from(ctx).notify(1000 + chatId, n)
+                } catch (_: SecurityException) {}
+            } finally {
                 pending.finish()
             }
         }

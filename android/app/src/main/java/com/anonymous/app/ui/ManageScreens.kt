@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -47,6 +46,7 @@ fun GroupInfoScreen(vm: AppViewModel, chatId: Int, onLeft: () -> Unit, onDm: (In
     var bio by remember(g.id, g.bio) { mutableStateOf(g.bio) }
     var minutes by remember { mutableStateOf("60") }
     var link by remember { mutableStateOf<String?>(null) }
+    var confirmLeave by remember { mutableStateOf(false) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { u -> if (u != null) vm.uploadGroupAvatar(chatId, u) }
 
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -109,11 +109,17 @@ fun GroupInfoScreen(vm: AppViewModel, chatId: Int, onLeft: () -> Unit, onDm: (In
 
         item { HorizontalDivider() }
         item {
-            TextButton({ vm.leaveChat(chatId) { onLeft() } }, Modifier.fillMaxWidth()) {
+            TextButton({ confirmLeave = true }, Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error)
             }
         }
     }
+    if (confirmLeave) AlertDialog(
+        onDismissRequest = { confirmLeave = false }, title = { Text(stringResource(R.string.leave_confirm)) },
+        text = { Text(g.title, maxLines = 1) },
+        confirmButton = { TextButton({ confirmLeave = false; vm.leaveChat(chatId) { onLeft() } }) { Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirmLeave = false }) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable
@@ -164,6 +170,7 @@ private fun MemberRow(vm: AppViewModel, g: GroupInfo, m: Member, manage: Boolean
 @Composable
 fun SettingsScreen(vm: AppViewModel, pin: PinStore, onAdmin: () -> Unit, onLists: () -> Unit, onChangePin: () -> Unit) {
     val me = vm.me ?: return
+    val ctx = LocalContext.current
     var name by remember(me.displayName) { mutableStateOf(me.displayName) }
     var bio by remember(me.bio) { mutableStateOf(me.bio) }
     var username by remember(me.username) { mutableStateOf(me.username ?: "") }
@@ -186,7 +193,7 @@ fun SettingsScreen(vm: AppViewModel, pin: PinStore, onAdmin: () -> Unit, onLists
         Button({
             val f = mutableMapOf<String, Any?>("display_name" to name, "bio" to bio)
             if (username.length >= 3 && username != me.username) f["username"] = username
-            vm.updateProfile(f)
+            vm.updateProfile(f) { ok -> if (ok) vm.infoRes = R.string.saved }
         }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.save)) }
 
         HorizontalDivider()
@@ -204,7 +211,7 @@ fun SettingsScreen(vm: AppViewModel, pin: PinStore, onAdmin: () -> Unit, onLists
 
         Text(stringResource(R.string.retention) + ": ${days.toInt()}", fontWeight = FontWeight.SemiBold)
         // Kaydirici en fazla 10; sunucu da 10'un ustunu reddeder
-        Slider(days, { days = it }, valueRange = 1f..10f, steps = 8, onValueChangeFinished = { vm.updateProfile(mapOf("retention_days" to days.toInt())) })
+        Slider(days, { days = it }, valueRange = 1f..10f, steps = 8, onValueChangeFinished = { vm.updateProfile(mapOf("retention_days" to days.toInt())) { ok -> if (!ok) days = me.retentionDays.toFloat() } })
         Text(stringResource(R.string.retention_note), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         HorizontalDivider()
@@ -215,7 +222,9 @@ fun SettingsScreen(vm: AppViewModel, pin: PinStore, onAdmin: () -> Unit, onLists
         }
         Text(stringResource(R.string.language), fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val cur = AppCompatDelegate.getApplicationLocales().toLanguageTags().ifBlank { "tr" }.take(2)
+            val supported = listOf("tr", "en", "de", "ru")
+            val cur = AppCompatDelegate.getApplicationLocales().toLanguageTags().ifBlank { java.util.Locale.getDefault().language }.take(2)
+                .let { if (it in supported) it else "tr" }
             listOf("tr" to "Türkçe", "en" to "English", "de" to "Deutsch", "ru" to "Русский").forEach { (tag, label) ->
                 FilterChip(cur == tag, { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag)) }, { Text(label, fontSize = 12.sp) })
             }
@@ -239,7 +248,7 @@ fun SettingsScreen(vm: AppViewModel, pin: PinStore, onAdmin: () -> Unit, onLists
         if (confirmDelete) AlertDialog(
             onDismissRequest = { confirmDelete = false }, title = { Text(stringResource(R.string.delete_account)) },
             text = { Text(stringResource(R.string.delete_account_body)) },
-            confirmButton = { TextButton({ confirmDelete = false; vm.deleteAccount { pin.clear() } }) { Text(stringResource(R.string.delete_account_confirm), color = MaterialTheme.colorScheme.error) } },
+            confirmButton = { TextButton({ confirmDelete = false; vm.deleteAccount { pin.clear(); PermPrefs(ctx).onboarded = false } }) { Text(stringResource(R.string.delete_account_confirm), color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton({ confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
@@ -314,7 +323,7 @@ fun AdminScreen(vm: AppViewModel, onProfile: (Int) -> Unit) {
                     if ("ban_users" in perms) {
                         if (u.banned) TextButton({ vm.adminAction("unban", mapOf("user_id" to u.id)) { reload++; sel = null } }) { Text(stringResource(R.string.unban)) }
                         else {
-                            OutlinedTextField(hours, { hours = it.filter(Char::isDigit).take(5) }, label = { Text("saat (0 = süresiz)") }, singleLine = true)
+                            OutlinedTextField(hours, { hours = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.ban_hours_hint)) }, singleLine = true)
                             TextButton({ vm.adminAction("ban", mapOf("user_id" to u.id, "hours" to (hours.toIntOrNull() ?: 0))) { reload++; sel = null } }) {
                                 Text(stringResource(R.string.ban), color = MaterialTheme.colorScheme.error)
                             }

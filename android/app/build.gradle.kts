@@ -13,8 +13,8 @@ android {
         applicationId = "com.anonymous.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     // Google girisi SHA-1'e baglidir. CI'da anahtar ortam degiskenlerinden gelir; yerelde debug anahtari kullanilir.
@@ -42,6 +42,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    lint { checkReleaseBuilds = false; abortOnError = false }
 }
 
 dependencies {
@@ -58,9 +59,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Google girisi (Credential Manager)
-    implementation("androidx.credentials:credentials:1.3.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

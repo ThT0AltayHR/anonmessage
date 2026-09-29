@@ -56,7 +56,7 @@ fun PermissionOnboarding(onDone: () -> Unit) {
     val mediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { onDone() }
 
     Column(
-        Modifier.fillMaxSize().padding(32.dp),
+        Modifier.fillMaxSize().systemBarsPadding().padding(32.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         StickerImage(if (step == 0) "shh" else "laptop", 96.dp)

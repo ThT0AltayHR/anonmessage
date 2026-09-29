@@ -1,6 +1,8 @@
 package com.anonymous.app.data
 
 import android.content.Context
+import com.anonymous.app.R
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -12,11 +14,11 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 const val BASE = "https://anonymousmsg.gt.tc"
-const val WEB_CLIENT_ID = "704128122409-91fshq46j7lp7f1ti5lr2t1oat5b28sr.apps.googleusercontent.com"
 
 class ApiException(message: String, val code: Int) : Exception(message)
 
 class Api(ctx: Context) {
+    private val appCtx = ctx.applicationContext
     private val prefs = ctx.getSharedPreferences("anon", Context.MODE_PRIVATE)
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -42,17 +44,24 @@ class Api(ctx: Context) {
         try {
             client.newCall(rb.build()).execute().use { r ->
                 val text = r.body?.string().orEmpty()
+                // 401: govde JSON olsun olmasin oturum gecersizdir -> token temizlenir
+                if (r.code == 401) token = null
                 val obj = try { json.parseToJsonElement(text).jsonObject } catch (e: Exception) {
-                    throw ApiException("Sunucu yaniti okunamadi", r.code)
+                    // JSON degil (ornegin barindirma sitesinin HTML sayfasi): kisa ozetle goster
+                    val snippet = text.replace(Regex("\\s+"), " ").trim().take(60)
+                    throw ApiException(appCtx.getString(R.string.error_server, r.code, snippet), r.code)
                 }
                 if (!r.isSuccessful) {
-                    if (r.code == 401) token = null
-                    throw ApiException(obj["error"]?.jsonPrimitive?.contentOrNull ?: "Hata ${r.code}", r.code)
+                    throw ApiException(obj["error"]?.jsonPrimitive?.contentOrNull ?: "HTTP ${r.code}", r.code)
                 }
                 obj
             }
-        } catch (e: ApiException) { throw e } catch (e: Exception) {
-            throw ApiException(e.message ?: "Baglanti hatasi", 0)
+        } catch (e: CancellationException) { throw e
+        } catch (e: ApiException) { throw e
+        } catch (e: java.io.IOException) {
+            throw ApiException(appCtx.getString(R.string.error_network), 0)
+        } catch (e: Exception) {
+            throw ApiException(e.message ?: appCtx.getString(R.string.error_network), 0)
         }
     }
 
@@ -63,6 +72,10 @@ class Api(ctx: Context) {
                     null -> put(k, JsonNull)
                     is Boolean -> put(k, v)
                     is Number -> put(k, v)
+                    is JsonElement -> put(k, v)
+                    is Iterable<*> -> put(k, JsonArray(v.map { x ->
+                        when (x) { null -> JsonNull; is Boolean -> JsonPrimitive(x); is Number -> JsonPrimitive(x); else -> JsonPrimitive(x.toString()) }
+                    }))
                     else -> put(k, v.toString())
                 }
             }
@@ -85,13 +98,19 @@ class Api(ctx: Context) {
     /** Dosyayi indirir ve cache'e yazar. */
     suspend fun download(ctx: Context, fileId: Int, name: String): File = withContext(Dispatchers.IO) {
         val rb = req("files.php", "get", mapOf("id" to fileId.toString())).get()
-        client.newCall(rb.build()).execute().use { r ->
-            if (!r.isSuccessful) throw ApiException(if (r.code == 410) "expired" else "Hata ${r.code}", r.code)
-            val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80)
-            val out = File(ctx.cacheDir, "dl_${fileId}_$safe")
-            r.body!!.byteStream().use { i -> out.outputStream().use { o -> i.copyTo(o) } }
-            out
-        }
+        try {
+            client.newCall(rb.build()).execute().use { r ->
+                if (r.code == 401) token = null
+                if (!r.isSuccessful) throw ApiException("HTTP ${r.code}", r.code)
+                val body = r.body ?: throw ApiException(appCtx.getString(R.string.error_network), r.code)
+                val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "dosya" }
+                val out = File(ctx.cacheDir, "dl_${fileId}_$safe")
+                body.byteStream().use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+                out
+            }
+        } catch (e: CancellationException) { throw e
+        } catch (e: ApiException) { throw e
+        } catch (e: java.io.IOException) { throw ApiException(appCtx.getString(R.string.error_network), 0) }
     }
 
     fun avatarUrl(name: String?) = if (name.isNullOrBlank() || name == "@anon") null else "$BASE/avatars/$name"
@@ -137,7 +156,7 @@ data class Msg(
 data class Reaction(val sticker: String, val count: Int, val mine: Boolean)
 
 fun JsonObject.toMsg(): Msg {
-    val s = this["sender"]!!.jsonObject
+    val s = this["sender"]?.takeIf { it !is JsonNull }?.jsonObject ?: JsonObject(emptyMap())
     val f = this["file"]?.takeIf { it !is JsonNull }?.jsonObject
     return Msg(
         id = int("id"), senderId = int("sender_id"),
@@ -162,7 +181,7 @@ data class ChatItem(
     val isPublic: Boolean, val pinned: Boolean, val muted: Boolean, val unread: Int, val myRole: String?,
     val peer: User?, val lastText: String?, val lastKind: String?, val lastAt: String?, val lastDeleted: Boolean,
 ) {
-    val name: String get() = if (type == "dm") (peer?.displayName?.ifBlank { peer.username } ?: "?") else (title ?: slug ?: "?")
+    val name: String get() = if (type == "dm") (peer?.let { p -> p.displayName.ifBlank { p.username ?: "?" } } ?: "?") else (title ?: slug ?: "?")
     val pic: String? get() = if (type == "dm") peer?.avatar else avatar
 }
 
