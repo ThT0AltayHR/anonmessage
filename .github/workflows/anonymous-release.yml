@@ -26,17 +26,28 @@ jobs:
             --output "$RUNNER_TEMP/anonymous-source.zip"
           unzip -q "$RUNNER_TEMP/anonymous-source.zip" -d "$SOURCE_DIR"
           test -f "$SOURCE_DIR/android/app/build.gradle.kts"
-          python3 - "$SOURCE_DIR/android/app/src/main/res/values-en/strings.xml" <<'PY'
+          python3 - \
+            "$SOURCE_DIR/android/app/src/main/res/values-en/strings.xml" \
+            "$SOURCE_DIR/android/app/src/main/java/com/anonymous/app/ui/ManageScreens.kt" <<'PY'
           from pathlib import Path
           import sys
 
-          path = Path(sys.argv[1])
-          source = path.read_text()
+          strings = Path(sys.argv[1])
+          source = strings.read_text()
           broken = """<string name="auth_mismatch">Passwords don't match</string>"""
           fixed = r"""<string name="auth_mismatch">Passwords don\'t match</string>"""
           if broken not in source:
               raise SystemExit("Expected English password string was not found; refusing to patch.")
-          path.write_text(source.replace(broken, fixed, 1))
+          strings.write_text(source.replace(broken, fixed, 1))
+
+          screen = Path(sys.argv[2])
+          screen_source = screen.read_text()
+          lazy_items = "import androidx.compose.foundation.lazy.items\n"
+          grid_items = "import androidx.compose.foundation.lazy.grid.items\n"
+          if lazy_items not in screen_source:
+              raise SystemExit("Expected LazyColumn items import was not found; refusing to patch.")
+          if grid_items not in screen_source:
+              screen.write_text(screen_source.replace(lazy_items, lazy_items + grid_items, 1))
           PY
           echo "ANONYMOUS_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
